@@ -5,7 +5,9 @@
 * The [search property file](search.properties) is in the same directory as `filesSearch` binary
 * The property file contains key-value pairs in each line
     * Key = The directory tree you want to start the search in
+        * Can be relative path or full path
     * Value = The last modified date you want filter by
+        * Can be either of `today` or `YYYY-MM-DD` formatted date
     * See [Example](search.properties)
 
 ## Remember
