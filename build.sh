@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/sh
 
 echo "Cleaning dist directory..."
 rm -rf dist/*
