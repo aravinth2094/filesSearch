@@ -3,6 +3,10 @@
 
 ## Ensure
 * The [search property file](search.properties) is in the same directory as `filesSearch` binary
+* The property file contains key-value pairs in each line
+    * Key = The directory tree you want to start the search in
+    * Value = The last modified date you want filter by
+    * See [Example](search.properties)
 
 ## Remember
 * Output will be written in the same directory from where this software is run
