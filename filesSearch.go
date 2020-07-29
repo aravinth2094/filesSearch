@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,6 +27,13 @@ type appConfigProperties map[string]string
 var cache map[string]int = make(map[string]int)
 
 const layoutISO = "2006-01-02"
+
+type searchedFile struct {
+	Path string
+	Info os.FileInfo
+}
+
+var wg sync.WaitGroup
 
 func readPropertiesFile(filename string) (appConfigProperties, error) {
 	config := appConfigProperties{}
@@ -80,6 +88,14 @@ func fileCount(path string) (int, error) {
 	return i, nil
 }
 
+func write(writer *csv.Writer, dataChannel <-chan searchedFile) {
+	for data := range dataChannel {
+		count, _ := fileCount(filepath.Dir(data.Path))
+		writer.Write([]string{data.Path, data.Info.ModTime().String(), fmt.Sprintf("%d", data.Info.Size()), fmt.Sprintf("%d", count)})
+	}
+	wg.Done()
+}
+
 func main() {
 	log.Println(os.Args[0], "Version", VERSION)
 	log.Println("Loading configuration from search.properties")
@@ -97,6 +113,9 @@ func main() {
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 	writer.Write([]string{"FILE_NAME", "FILE_MODIFIED_TIME", "FILE_SIZE", "DIRECTORY_FILES_COUNT"})
+	dataChannel := make(chan searchedFile, 1000)
+	wg.Add(1)
+	go write(writer, dataChannel)
 	log.Println("Searching...")
 	filesFound := 0
 	filesSearched := 0
@@ -126,8 +145,7 @@ func main() {
 			if info.ModTime().Format(layoutISO) != date.Format(layoutISO) {
 				return nil
 			}
-			count, _ := fileCount(filepath.Dir(path))
-			writer.Write([]string{path, info.ModTime().String(), fmt.Sprintf("%d", info.Size()), fmt.Sprintf("%d", count)})
+			dataChannel <- searchedFile{Path: path, Info: info}
 			filesFound = filesFound + 1
 			return nil
 		})
@@ -135,6 +153,8 @@ func main() {
 			fmt.Printf("Error walking the path %q: %v\n", directory, err)
 		}
 	}
+	close(dataChannel)
+	wg.Wait()
 	log.Println(filesFound, "/", filesSearched, "found in", len(cache), "subdirectories in", (time.Now().Sub(start)))
 	log.Println("Program Completed")
 }
